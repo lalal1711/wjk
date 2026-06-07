@@ -1,5 +1,7 @@
 # wjk
 
+[![Deploy to Cloudflare Workers](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/lalal1711/wjk)
+
 基于 **Cloudflare Workers** + **Supabase** 构建的个人效率工具，前后端一体，部署即可用。支持备忘、网址收藏、文件备份记录，数据云端同步。
 
 > 🌐 **访问 Worker 地址即可直接使用**，无需单独部署前端。
@@ -131,6 +133,25 @@ cd wjk
 wrangler deploy worker.js
 ```
 
+#### 方式三：通过 GitHub 自动部署到 Cloudflare（推荐）
+
+利用 Cloudflare 的 Git 集成，连接 GitHub 仓库后每次推送自动部署。
+
+**准备工作：** 在仓库中添加 `wrangler.toml`（已提供），并获取 Cloudflare API Token。
+
+1. 打开 [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages**
+2. 点击 **Create** → **Pages** → **Connect to Git**
+3. 授权 GitHub，选择 `lalal1711/wjk` 仓库
+4. 在 **Build settings** 中：Framework preset 选 **None**，Build command 留空，Build output 填 `.`
+5. 点击 **Save and Deploy** — Cloudflare 会自动拉取仓库并部署
+6. 部署完成后，在项目 Settings → **Variables and Secrets** 中添加环境变量（见下方）
+
+> 推送新的 commit 到 main 分支会自动触发重新部署。
+
+也可以用 GitHub Actions（已提供 `.github/workflows/deploy.yml`）：
+1. 在 GitHub 仓库 Settings → **Secrets and variables** → **Actions** 中添加 `CF_API_TOKEN`
+2. 每次推送 `main` 分支会自动部署
+
 ### 第四步：配置环境变量
 
 在 Cloudflare Worker 控制台中：
@@ -141,9 +162,46 @@ wrangler deploy worker.js
 | --- | --- | --- |
 | `SUPABASE_URL` | `https://你的地址.supabase.co` | Plain text |
 | `SUPABASE_KEY` | `eyJ...`（anon key） | Plain text |
-| `AUTH_PASSWORD`（可选） | 你的访问密码 | Plain text |
+| `AUTH_PASSWORD`（可选） | 你的访问密码 | Secret |
+
+> 方式二/三可使用 `npx wrangler secret put SUPABASE_URL` 等命令设置。
 
 保存后 Worker 自动重新部署，**访问 Worker 地址即可使用**。
+
+### 第五步（可选）：配置 Supabase RLS
+
+当前数据库的 RLS（Row Level Security）默认为完全开放。配置 RLS 策略后，即使知道你的 Supabase URL 和 anon key 也无法直接读写数据。
+
+在 Supabase Dashboard → **SQL Editor** 中执行：
+
+```sql
+-- 为 notes 表启用 RLS
+alter table notes enable row level security;
+
+-- 创建策略：允许所有操作（配合 Worker 端的 AUTH_PASSWORD 验证）
+create policy "Allow all for notes"
+  on notes for all
+  using (true)
+  with check (true);
+
+-- 为 bookmarks 表启用 RLS
+alter table bookmarks enable row level security;
+
+create policy "Allow all for bookmarks"
+  on bookmarks for all
+  using (true)
+  with check (true);
+
+-- 为 files 表启用 RLS
+alter table files enable row level security;
+
+create policy "Allow all for files"
+  on files for all
+  using (true)
+  with check (true);
+```
+
+> 配合 Worker 的 `AUTH_PASSWORD` 使用：Worker 端验证密码后，通过 Service Role Key（`service_role`，非 `anon`）转发请求到 Supabase，即可跳过 RLS 限制。
 
 * * *
 
@@ -200,14 +258,23 @@ Worker 同时提供前端页面和 REST API，接口如下：
 
 ## ⚠️ 安全说明
 
-当前 RLS 策略为 **完全开放**（`Allow all`），任何人只要知道你的 Worker 地址就可以读写数据。
+### 访问控制
 
-如果仅个人使用，建议设置 `AUTH_PASSWORD`：
+推荐组合使用以下两层防护：
 
-1. 在 Cloudflare Worker 环境变量中添加 `AUTH_PASSWORD`
-2. 前端会自动弹出登录框，验证通过后将密码保存在 `sessionStorage`（可选 `localStorage` 记住 7 天）
-3. 所有 `/api/*` 请求会自动带上 `X-Token` Header
-4. 首页 `/` 始终公开，无需密码即可访问
+**方式一：RLS（推荐长期使用）**
+在 Supabase 中启用 Row Level Security（参见部署第五步），防止数据库被直接访问。配合 Worker 端认证，anong key 不会暴露给最终用户。
+
+**方式二：AUTH_PASSWORD（简单快捷）**
+在 Cloudflare Worker 环境变量中添加 `AUTH_PASSWORD`：
+
+1. 前端会自动弹出登录框，验证通过后将密码保存在 `sessionStorage`（可选 `localStorage` 记住 7 天）
+2. 所有 `/api/*` 请求会自动带上 `X-Token` Header
+3. 首页 `/` 始终公开，无需密码即可访问
+
+### 已知安全优化
+
+- Markdown 渲染时已过滤 `javascript:` 和 `data:` 协议，防止 XSS 链接注入
 
 * * *
 
