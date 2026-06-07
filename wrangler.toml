@@ -1,0 +1,11 @@
+name = "wjk"
+main = "worker.js"
+compatibility_date = "2026-06-08"
+
+# 环境变量通过 `npx wrangler secret put <KEY>` 设置
+# 或在 Cloudflare Dashboard → Worker → Settings → Variables 中配置
+
+[vars]
+# SUPABASE_URL = "https://xxx.supabase.co"
+# SUPABASE_KEY = "eyJ..."
+# AUTH_PASSWORD = "your-password"
