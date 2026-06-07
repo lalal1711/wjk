@@ -1,0 +1,4 @@
+| 变量名            | 值                          | 类型         |
+| -------------- | -------------------------- | ---------- |
+| `SUPABASE_URL` | `https://你的地址.supabase.co` | Plain text |
+| `SUPABASE_KEY` | `eyJ...`（anon key）         | Plain text |
