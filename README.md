@@ -48,7 +48,7 @@
 浏览器
   │
   ▼
-Cloudflare Worker（[worker.js](worker.js)）
+Cloudflare Worker（<a href="worker.js" target="_blank">worker.js</a>）
   ├── GET /          → 返回内嵌的前端 HTML 页面
   ├── GET /api/*     → 代理请求到 Supabase REST API
   ├── POST /api/*    → 写入数据到 Supabase
@@ -131,8 +131,8 @@ create table if not exists files (
 
 #### 方式一：Cloudflare 控制台（推荐新手）
 
-1. 打开 [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Create Worker**
-2. 将 [`worker.js`](worker.js) 的内容全部粘贴进编辑器
+1. 打开 <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a> → **Workers & Pages** → **Create** → **Create Worker**
+2. 将 <a href="worker.js" target="_blank">`worker.js`</a> 的内容全部粘贴进编辑器
 3. 点击 **Deploy**
 
 #### 方式二：Wrangler CLI（推荐开发者）
@@ -149,7 +149,7 @@ git clone https://github.com/lalal1711/wjk.git
 cd wjk
 
 # 部署
-wrangler deploy [worker.js](worker.js)
+wrangler deploy <a href="worker.js" target="_blank">worker.js</a>
 ```
 
 #### 方式三：通过 GitHub 自动部署到 Cloudflare（推荐）
@@ -158,7 +158,7 @@ wrangler deploy [worker.js](worker.js)
 
 **准备工作：** 在仓库中添加 `wrangler.toml`（已提供），并获取 Cloudflare API Token。
 
-1. 打开 [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages**
+1. 打开 <a href="https://dash.cloudflare.com" target="_blank" rel="noopener">dash.cloudflare.com</a> → **Workers & Pages**
 2. 点击 **Create** → **Pages** → **Connect to Git**
 3. 授权 GitHub，选择 `lalal1711/wjk` 仓库
 4. 在 **Build settings** 中：Framework preset 选 **None**，Build command 留空，Build output 填 `.`
