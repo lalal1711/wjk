@@ -403,7 +403,7 @@ var currentToken='';
 var authRequired=false;
 
 /* ═══ UTILS ═══ */
-function esc(t){if(!t)return'';return(t+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function esc(t){if(!t)return'';return(t+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function fmtDate(d){
   var dt=new Date(d);
   var M=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
@@ -489,6 +489,7 @@ function showLogin(msg){
   document.getElementById('login-screen').style.display='';
   document.getElementById('login-screen').classList.remove('out');
   document.getElementById('app').style.display='none';
+  document.getElementById('logout-btn').style.display='none';
   if(msg){document.getElementById('l-err').textContent=msg;}
 }
 function showApp(){
@@ -496,7 +497,7 @@ function showApp(){
   ls.classList.add('out');
   setTimeout(function(){ls.style.display='none';},400);
   document.getElementById('app').style.display='';
-  if(authRequired)document.getElementById('logout-btn').style.display='';
+  document.getElementById('logout-btn').style.display = authRequired ? 'inline-flex' : 'none';
 }
 async function doLogin(){
   var pwd=document.getElementById('pwd').value;
@@ -557,9 +558,12 @@ function getTags(data,key){var m={};data.forEach(function(d){(d[key]||'').split(
 function renderTags(cid,tags,panel){
   var el=document.getElementById(cid);if(!tags.length){el.innerHTML='';return;}
   var at=atag[panel];
-  var h='<button class="tf'+(at===null?' on':'')+'" onclick="setTag(\''+panel+'\',null)">全部<\/button>';
-  tags.forEach(function(t){h+='<button class="tf'+(at===t?' on':'')+'" onclick="setTag(\''+panel+'\',\''+esc(t)+'\')">'+esc(t)+'<\/button>';});
+  var h='<button class="tf'+(at===null?' on':'')+'" data-tag="">全部<\/button>';
+  tags.forEach(function(t){h+='<button class="tf'+(at===t?' on':'')+'" data-tag="'+esc(t)+'">'+esc(t)+'<\/button>';});
   el.innerHTML=h;
+  el.querySelectorAll('.tf').forEach(function(btn){
+    btn.onclick=function(){setTag(panel, btn.dataset.tag||null);};
+  });
 }
 function setTag(p,tag){atag[p]=tag;if(p==='notes')renderNotes();if(p==='bookmarks')renderBookmarks();}
 
@@ -590,7 +594,7 @@ function exportNotes(){
   if(!ND.length)return toast('暂无数据可导出','err');
   var md='# 备忘导出\n\n';
   ND.forEach(function(n){
-    md+='## '+( n.title||'无标题')+'\n\n';
+    md+='## '+(n.title||'无标题')+'\n\n';
     if(n.content)md+=n.content+'\n\n';
     if(n.tags)md+='**标签：** '+n.tags+'\n\n';
     md+='> '+fmtDate(n.created_at)+'\n\n---\n\n';
@@ -609,12 +613,12 @@ function skelCards(){
   var h='';
   for(var i=0;i<3;i++){
     h+='<div class="card skel-card" style="animation-delay:'+(i*.1)+'s">'+
-      '<div class="skel-line" style="width:55%;margin-bottom:12px"></div>'+
-      '<div class="skel-line" style="width:100%;margin-bottom:7px"></div>'+
-      '<div class="skel-line" style="width:80%;margin-bottom:14px"></div>'+
+      '<div class="skel-line" style="width:55%;margin-bottom:12px"><\/div>'+
+      '<div class="skel-line" style="width:100%;margin-bottom:7px"><\/div>'+
+      '<div class="skel-line" style="width:80%;margin-bottom:14px"><\/div>'+
       '<div style="display:flex;gap:8px">'+
-      '<div class="skel-line" style="width:48px;height:20px;border-radius:99px"></div>'+
-      '<div class="skel-line" style="width:64px;height:20px;border-radius:99px"></div>'+
+      '<div class="skel-line" style="width:48px;height:20px;border-radius:99px"><\/div>'+
+      '<div class="skel-line" style="width:64px;height:20px;border-radius:99px"><\/div>'+
       '<\/div><\/div>';
   }
   return h;
@@ -648,15 +652,25 @@ function renderNotes(){
     var isLong=raw.length>160||raw.split('\n').length>3;
     var isExp=expandedNotes.indexOf(n.id)>-1;
     var tags=n.tags?(n.tags.split(' ').filter(Boolean).map(function(t){return '<span class="pill">'+esc(t)+'<\/span>';}).join('')):'';
-    return '<div class="card" style="animation-delay:'+delay+'">'+
+    return '<div class="card" data-id="'+n.id+'" style="animation-delay:'+delay+'">'+
       '<div class="chead"><div style="flex:1;min-width:0"><div class="ctitle">'+esc(n.title)+'<\/div>'+
       (raw?'<div class="cbody'+(isLong&&!isExp?' clamped':'')+'">'+mdRender(raw)+'<\/div>':'')+
-      (isLong?'<button class="expand-toggle" onclick="toggleExpand('+n.id+')">'+(isExp?'▲ 收起':'▼ 展开')+'<\/button>':'')+
+      (isLong?'<button class="expand-toggle" data-id="'+n.id+'">'+(isExp?'▲ 收起':'▼ 展开')+'<\/button>':'')+
       '<\/div><div class="acts">'+
-      '<button class="ibtn edt" onclick="startEdit('+n.id+')" title="编辑">✏️<\/button>'+
-      '<button class="ibtn del" onclick="delNote('+n.id+')" title="删除">🗑<\/button>'+
+      '<button class="ibtn edt" data-id="'+n.id+'" title="编辑">✏️<\/button>'+
+      '<button class="ibtn del" data-id="'+n.id+'" title="删除">🗑<\/button>'+
       '<\/div><\/div><div class="cfoot">'+tags+'<span class="ts">'+fmtDate(n.created_at)+'<\/span><\/div><\/div>';
   }).join('');
+  // 绑定事件（避免在 HTML 字符串中嵌入引号）
+  el.querySelectorAll('.card[data-id]').forEach(function(card){
+    var id=parseInt(card.dataset.id);
+    var edt=card.querySelector('.ibtn.edt');
+    var del=card.querySelector('.ibtn.del');
+    var exp=card.querySelector('.expand-toggle');
+    if(edt)edt.onclick=function(){startEdit(id);};
+    if(del)del.onclick=function(){delNote(id);};
+    if(exp)exp.onclick=function(){toggleExpand(id);};
+  });
 }
 function toggleExpand(id){
   var idx=expandedNotes.indexOf(id);
@@ -717,15 +731,22 @@ function renderBookmarks(){
   if(!d.length){el.innerHTML='<div class="empty"><div class="empty-ico">🔖<\/div><p>'+(BD.length?'没有匹配的收藏':'还没有收藏，添加第一个 👆')+'<\/p><\/div>';return;}
   el.innerHTML=d.map(function(b,i){
     var tags=b.tags?(b.tags.split(' ').filter(Boolean).map(function(t){return '<span class="pill">'+esc(t)+'<\/span>';}).join('')):'';
-    return '<div class="card" style="animation-delay:'+(i*.04)+'s">'+
+    return '<div class="card" data-id="'+b.id+'" style="animation-delay:'+(i*.04)+'s">'+
       '<div class="chead"><div style="flex:1;min-width:0">'+
       '<a href="'+esc(b.url)+'" target="_blank" rel="noopener" class="bm-link">'+esc(b.title)+'<\/a>'+
       '<div class="bm-url">'+esc(b.url)+'<\/div><\/div>'+
       '<div class="acts">'+
-      '<button class="ibtn cpy" onclick="copyURL(\''+esc(b.url)+'\')" title="复制链接">⎘<\/button>'+
-      '<button class="ibtn del" onclick="delBM('+b.id+')" title="删除">🗑<\/button>'+
+      '<button class="ibtn cpy" data-url="'+esc(b.url)+'" title="复制链接">⎘<\/button>'+
+      '<button class="ibtn del" data-id="'+b.id+'" title="删除">🗑<\/button>'+
       '<\/div><\/div><div class="cfoot">'+tags+'<span class="ts">'+fmtDate(b.created_at)+'<\/span><\/div><\/div>';
   }).join('');
+  el.querySelectorAll('.card[data-id]').forEach(function(card){
+    var id=parseInt(card.dataset.id);
+    var cpy=card.querySelector('.ibtn.cpy');
+    var del=card.querySelector('.ibtn.del');
+    if(cpy)cpy.onclick=function(){copyURL(cpy.dataset.url);};
+    if(del)del.onclick=function(){delBM(id);};
+  });
 }
 function copyURL(url){navigator.clipboard.writeText(url).then(function(){toast('链接已复制','ok');}).catch(function(){toast('复制失败','err');});}
 var dedupTimer=null;
@@ -734,7 +755,7 @@ function onUrlInput(){
   var warn=document.getElementById('dedup-warn');
   if(!url){warn.style.display='none';return;}
   var norm=url.toLowerCase().replace(/\/$/,'');
-  var dup=BD.some(function(b){return(b.url||'').toLowerCase().replace(/\/$/,'')=== norm;});
+  var dup=BD.some(function(b){return(b.url||'').toLowerCase().replace(/\/$/,'')===norm;});
   warn.style.display=dup?'block':'none';
 }
 var titleFetchTimer=null;
@@ -751,7 +772,7 @@ function onUrlPaste(){
     }).catch(function(){}).finally(function(){
       tEl.classList.remove('title-loading');tEl.placeholder='网站名称（粘贴链接后自动获取）';
     });
-  },300);
+  },100);
 }
 async function addBookmark(){
   var title=document.getElementById('b-title').value.trim();
@@ -788,12 +809,17 @@ function renderFiles(){
   var d=filtFiles();var el=document.getElementById('files-list');
   if(!d.length){el.innerHTML='<div class="empty"><div class="empty-ico">💾<\/div><p>'+(FD.length?'没有匹配的文件':'还没有备份记录')+'<\/p><\/div>';return;}
   el.innerHTML=d.map(function(f,i){
-    return '<div class="card" style="animation-delay:'+(i*.04)+'s"><div class="fcard-inner">'+
+    return '<div class="card" data-id="'+f.id+'" style="animation-delay:'+(i*.04)+'s"><div class="fcard-inner">'+
       '<div class="ficon">'+fileIco(f.name)+'<\/div>'+
       '<div style="flex:1;min-width:0"><div class="fname">'+esc(f.name)+'<\/div>'+
       '<div class="fmeta">'+fmtSize(f.size)+'&ensp;·&ensp;'+fmtDate(f.date)+'<\/div><\/div>'+
-      '<button class="ibtn del" onclick="delFile('+f.id+')" title="删除记录">🗑<\/button><\/div><\/div>';
+      '<button class="ibtn del" data-id="'+f.id+'" title="删除记录">🗑<\/button><\/div><\/div>';
   }).join('');
+  el.querySelectorAll('.card[data-id]').forEach(function(card){
+    var id=parseInt(card.dataset.id);
+    var del=card.querySelector('.ibtn.del');
+    if(del)del.onclick=function(){delFile(id);};
+  });
 }
 function onFileSel(input){
   curFile=input.files[0];
@@ -806,7 +832,8 @@ function onFileSel(input){
 async function backupFile(){
   if(!curFile)return toast('请先选择文件','err');
   var f=curFile;
-  var u=URL.createObjectURL(f);var a=document.createElement('a');a.href=u;a.download=f.name;a.click();URL.revokeObjectURL(u);
+  var u=URL.createObjectURL(f);var a=document.createElement('a');a.href=u;a.download=f.name;a.click();
+  setTimeout(function(){URL.revokeObjectURL(u);},1000);
   var tmp={id:Date.now(),name:f.name,size:f.size,date:new Date().toISOString()};
   FD.unshift(tmp);updBadges();renderFiles();
   curFile=null;document.getElementById('f-input').value='';
@@ -821,6 +848,7 @@ async function delFile(id){
   catch(e){toast('删除失败：'+e.message,'err');loadFiles();}
 }
 async function loadFiles(){
+  document.getElementById('files-list').innerHTML=skelCards();
   try{FD=await api('/files');updBadges();renderFiles();}
   catch(e){document.getElementById('files-list').innerHTML='<div class="empty"><div class="empty-ico">⚠️<\/div><p>加载失败：'+e.message+'<\/p><\/div>';}
 }
@@ -848,9 +876,14 @@ document.addEventListener('keydown',function(e){
 
 /* ═══ INIT ═══ */
 async function loadAll(){
-  setStatus('ok','已连接 Supabase');
+  setStatus('blink','连接中…');
   restoreDrafts();
-  Promise.all([loadNotes(),loadBookmarks(),loadFiles()]);
+  try{
+    await Promise.all([loadNotes(),loadBookmarks(),loadFiles()]);
+    setStatus('ok','已连接 Supabase');
+  }catch(e){
+    setStatus('err','连接失败');
+  }
 }
 async function init(){
   var saved=null;
@@ -861,21 +894,26 @@ async function init(){
     if(res.status===401){
       authRequired=true;
       if(saved){
-        // Saved token is invalid
         try{sessionStorage.removeItem('wjk_t');localStorage.removeItem('wjk_t');}catch(e){}
         document.getElementById('l-err').textContent='密码已过期，请重新登录';
       }
       showLogin();
-    }else if(res.ok){
-      currentToken=testToken;
-      authRequired=!!testToken;
+      return;
+    }
+    if(!res.ok) throw new Error(res.status+' '+res.statusText);
+    currentToken=testToken;
+    authRequired=!!testToken;
+    showApp();
+    loadAll();
+  }catch(e){
+    authRequired=!!saved;
+    currentToken=saved||'';
+    if(authRequired){
+      showLogin('连接失败：'+e.message);
+    }else{
       showApp();
       loadAll();
     }
-  }catch(e){
-    authRequired=false;
-    if(saved){currentToken=saved;authRequired=true;}
-    showApp();loadAll();
   }
 }
 init();
@@ -956,7 +994,8 @@ export default {
       }
       if (path.startsWith('/api/notes/') && request.method === 'DELETE') {
         const id = path.split('/')[3];
-        await fetch(SUPABASE_URL + '/rest/v1/notes?id=eq.' + id, { method: 'DELETE', headers: h });
+        const r = await fetch(SUPABASE_URL + '/rest/v1/notes?id=eq.' + id, { method: 'DELETE', headers: h });
+        if (!r.ok) return json({ error: 'Delete failed' }, r.status);
         return json({ ok: true });
       }
 
@@ -974,7 +1013,8 @@ export default {
       }
       if (path.startsWith('/api/bookmarks/') && request.method === 'DELETE') {
         const id = path.split('/')[3];
-        await fetch(SUPABASE_URL + '/rest/v1/bookmarks?id=eq.' + id, { method: 'DELETE', headers: h });
+        const r = await fetch(SUPABASE_URL + '/rest/v1/bookmarks?id=eq.' + id, { method: 'DELETE', headers: h });
+        if (!r.ok) return json({ error: 'Delete failed' }, r.status);
         return json({ ok: true });
       }
 
@@ -992,7 +1032,8 @@ export default {
       }
       if (path.startsWith('/api/files/') && request.method === 'DELETE') {
         const id = path.split('/')[3];
-        await fetch(SUPABASE_URL + '/rest/v1/files?id=eq.' + id, { method: 'DELETE', headers: h });
+        const r = await fetch(SUPABASE_URL + '/rest/v1/files?id=eq.' + id, { method: 'DELETE', headers: h });
+        if (!r.ok) return json({ error: 'Delete failed' }, r.status);
         return json({ ok: true });
       }
 
