@@ -148,10 +148,6 @@ wrangler deploy worker.js
 
 > 推送新的 commit 到 main 分支会自动触发重新部署。
 
-也可以用 GitHub Actions（已提供 `.github/workflows/deploy.yml`）：
-1. 在 GitHub 仓库 Settings → **Secrets and variables** → **Actions** 中添加 `CF_API_TOKEN`
-2. 每次推送 `main` 分支会自动部署
-
 ### 第四步：配置环境变量
 
 在 Cloudflare Worker 控制台中：
@@ -164,7 +160,9 @@ wrangler deploy worker.js
 | `SUPABASE_KEY` | `eyJ...`（anon key） | Plain text |
 | `AUTH_PASSWORD`（可选） | 你的访问密码 | Secret |
 
-> 方式二/三可使用 `npx wrangler secret put SUPABASE_URL` 等命令设置。
+> 方式二/三可使用 `npx wrangler secret put <KEY>` 等命令设置。
+
+保存后 Worker 自动重新部署，**访问 Worker 地址即可使用**。
 
 保存后 Worker 自动重新部署，**访问 Worker 地址即可使用**。
 
@@ -263,7 +261,7 @@ Worker 同时提供前端页面和 REST API，接口如下：
 推荐组合使用以下两层防护：
 
 **方式一：RLS（推荐长期使用）**
-在 Supabase 中启用 Row Level Security（参见部署第五步），防止数据库被直接访问。配合 Worker 端认证，anong key 不会暴露给最终用户。
+在 Supabase 中启用 Row Level Security（参见部署第五步），防止数据库被直接访问。配合 Worker 端认证，anon key 不会暴露给最终用户。
 
 **方式二：AUTH_PASSWORD（简单快捷）**
 在 Cloudflare Worker 环境变量中添加 `AUTH_PASSWORD`：
