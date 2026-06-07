@@ -6,7 +6,26 @@
 
 > 🌐 **访问 Worker 地址即可直接使用**，无需单独部署前端。
 
-* * *
+---
+
+## 📑 目录
+
+- [✨ 功能特性](#-功能特性)
+- [🏗️ 项目架构](#️-项目架构)
+- [🛠️ 技术栈](#️-技术栈)
+- [🗄️ 数据库结构](#️-数据库结构)
+- [🚀 部署流程](#-部署流程)
+  - [第一步：创建 Supabase 数据库](#第一步创建-supabase-数据库)
+  - [第二步：获取 Supabase 配置信息](#第二步获取-supabase-配置信息)
+  - [第三步：部署 Worker](#第三步部署-worker)
+  - [第四步：配置环境变量](#第四步配置环境变量)
+  - [第五步（可选）：配置 Supabase RLS](#第五步可选配置-supabase-rls)
+- [📡 API 接口](#-api-接口)
+- [⚙️ 环境变量](#️-环境变量)
+- [⚠️ 安全说明](#️-安全说明)
+- [📄 License](#-license)
+
+---
 
 ## ✨ 功能特性
 
@@ -29,7 +48,7 @@
 浏览器
   │
   ▼
-Cloudflare Worker（worker.js）
+Cloudflare Worker（[worker.js](worker.js)）
   ├── GET /          → 返回内嵌的前端 HTML 页面
   ├── GET /api/*     → 代理请求到 Supabase REST API
   ├── POST /api/*    → 写入数据到 Supabase
@@ -96,7 +115,7 @@ create table if not exists files (
 
 1. 前往 supabase.com 注册并新建项目
 2. 进入项目 → 左侧菜单 **SQL Editor** → **New query**
-3. 将上面的 SQL 全部粘贴进去，点击 **Run** 执行
+3. 将上面[数据库结构](#️-数据库结构)的 SQL 全部粘贴进去，点击 **Run** 执行
 4. 三张表创建完成（可重复执行，不会报错）
 
 ### 第二步：获取 Supabase 配置信息
@@ -152,7 +171,7 @@ wrangler deploy worker.js
 
 在 Cloudflare Worker 控制台中：
 
-**Worker 详情页** → **Settings** → **Variables and Secrets** → 添加以下变量：
+**Worker 详情页** → **Settings** → **Variables and Secrets** → 添加[以下变量](#️-环境变量)：
 
 | 变量名 | 值 | 类型 |
 | --- | --- | --- |
@@ -160,15 +179,13 @@ wrangler deploy worker.js
 | `SUPABASE_KEY` | `eyJ...`（anon key） | Plain text |
 | `AUTH_PASSWORD`（可选） | 你的访问密码 | Secret |
 
-> 方式二/三可使用 `npx wrangler secret put <KEY>` 等命令设置。
-
-保存后 Worker 自动重新部署，**访问 Worker 地址即可使用**。
+> 方式二/三可使用 `npx wrangler secret put <KEY>` 等命令设置（参考 [环境变量章节](#️-环境变量)）。
 
 保存后 Worker 自动重新部署，**访问 Worker 地址即可使用**。
 
 ### 第五步（可选）：配置 Supabase RLS
 
-当前数据库的 RLS（Row Level Security）默认为完全开放。配置 RLS 策略后，即使知道你的 Supabase URL 和 anon key 也无法直接读写数据。
+当前数据库的 RLS（Row Level Security）默认为完全开放。配置 RLS 策略后，即使知道你的 Supabase URL 和 anon key 也无法直接读写数据（详见[安全说明](#️-安全说明)）。
 
 在 Supabase Dashboard → **SQL Editor** 中执行：
 
@@ -261,7 +278,7 @@ Worker 同时提供前端页面和 REST API，接口如下：
 推荐组合使用以下两层防护：
 
 **方式一：RLS（推荐长期使用）**
-在 Supabase 中启用 Row Level Security（参见部署第五步），防止数据库被直接访问。配合 Worker 端认证，anon key 不会暴露给最终用户。
+在 Supabase 中启用 Row Level Security（参见[部署第五步](#第五步可选配置-supabase-rls)），防止数据库被直接访问。配合 Worker 端认证，anon key 不会暴露给最终用户。
 
 **方式二：AUTH_PASSWORD（简单快捷）**
 在 Cloudflare Worker 环境变量中添加 `AUTH_PASSWORD`：
