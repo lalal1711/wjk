@@ -929,11 +929,71 @@ init();
 </body>
 </html>`;
 
+const ALLOWED_TABLES = ['notes', 'bookmarks', 'files'];
+const ORDER_FIELD = { notes: 'created_at', bookmarks: 'created_at', files: 'date' };
+
+function corsify(response) {
+  const h = new Headers(response.headers);
+  h.set('Access-Control-Allow-Origin', '*');
+  h.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+  h.set('Access-Control-Allow-Headers', 'Content-Type, X-Token');
+  h.set('Access-Control-Max-Age', '86400');
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers: h });
+}
+
+function json(data, status) {
+  return new Response(JSON.stringify(data), {
+    status: status || 200,
+    headers: { 'Content-Type': 'application/json; charset=utf-8' }
+  });
+}
+
+function route(path) {
+  const m = path.match(/^\/api\/(\w+)(?:\/(\d+))?$/);
+  if (m && ALLOWED_TABLES.includes(m[1])) return { table: m[1], id: m[2] };
+  return null;
+}
+
+async function proxyList(table, supabaseUrl, headers) {
+  const order = ORDER_FIELD[table];
+  const r = await fetch(`${supabaseUrl}/rest/v1/${table}?select=*&order=${order}.desc`, { headers });
+  return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } });
+}
+
+async function proxyCreate(table, supabaseUrl, headers, request) {
+  const body = await request.json();
+  const r = await fetch(`${supabaseUrl}/rest/v1/${table}`, {
+    method: 'POST', headers: { ...headers, 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
+  });
+  return new Response(null, { status: r.status });
+}
+
+async function proxyUpdate(table, supabaseUrl, headers, id, request) {
+  const body = await request.json();
+  const r = await fetch(`${supabaseUrl}/rest/v1/${table}?id=eq.${id}`, {
+    method: 'PATCH', headers: { ...headers, 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
+  });
+  return new Response(null, { status: r.status });
+}
+
+async function proxyDelete(table, supabaseUrl, headers, id) {
+  const r = await fetch(`${supabaseUrl}/rest/v1/${table}?id=eq.${id}`, { method: 'DELETE', headers });
+  if (!r.ok) return json({ error: 'Delete failed' }, r.status);
+  return json({ ok: true });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
+    const method = request.method;
 
+    // CORS preflight
+    if (method === 'OPTIONS') {
+      return corsify(new Response(null, { status: 204 }));
+    }
+
+    // Serve HTML
     if (path === '/' || path === '/index.html') {
       return new Response(HTML, { headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
@@ -941,14 +1001,14 @@ export default {
     const SUPABASE_URL = env.SUPABASE_URL;
     const SUPABASE_KEY = env.SUPABASE_KEY;
     if (!SUPABASE_URL || !SUPABASE_KEY) {
-      return json({ error: '请配置 SUPABASE_URL 和 SUPABASE_KEY' }, 500);
+      return corsify(json({ error: '请配置 SUPABASE_URL 和 SUPABASE_KEY' }, 500));
     }
 
     // Auth middleware
     if (env.AUTH_PASSWORD) {
       const token = request.headers.get('X-Token');
       if (token !== env.AUTH_PASSWORD) {
-        return json({ error: 'Unauthorized' }, 401);
+        return corsify(json({ error: 'Unauthorized' }, 401));
       }
     }
 
@@ -959,10 +1019,10 @@ export default {
     };
 
     try {
-      // fetch-title
-      if (path === '/api/fetch-title' && request.method === 'GET') {
+      // fetch-title (special handler)
+      if (path === '/api/fetch-title' && method === 'GET') {
         const targetUrl = url.searchParams.get('url');
-        if (!targetUrl) return json({ title: '' });
+        if (!targetUrl) return corsify(json({ title: '' }));
         try {
           const ctrl = new AbortController();
           const tid = setTimeout(() => ctrl.abort(), 5000);
@@ -973,88 +1033,27 @@ export default {
           clearTimeout(tid);
           const text = await r.text();
           const m = text.slice(0, 80000).match(/<title[^>]*>([^<]{1,200})<\/title>/i);
-          const title = m ? m[1].trim().replace(/\s+/g, ' ') : '';
-          return json({ title });
+          return corsify(json({ title: m ? m[1].trim().replace(/\s+/g, ' ') : '' }));
         } catch (e) {
-          return json({ title: '' });
+          return corsify(json({ title: '' }));
         }
       }
 
-      // Notes
-      if (path === '/api/notes' && request.method === 'GET') {
-        const r = await fetch(SUPABASE_URL + '/rest/v1/notes?select=*&order=created_at.desc', { headers: h });
-        return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } });
-      }
-      if (path === '/api/notes' && request.method === 'POST') {
-        const body = await request.json();
-        const r = await fetch(SUPABASE_URL + '/rest/v1/notes', {
-          method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
-        });
-        return new Response(null, { status: r.status });
-      }
-      if (path.startsWith('/api/notes/') && request.method === 'PATCH') {
-        const id = path.split('/')[3];
-        const body = await request.json();
-        const r = await fetch(SUPABASE_URL + '/rest/v1/notes?id=eq.' + id, {
-          method: 'PATCH', headers: { ...h, 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
-        });
-        return new Response(null, { status: r.status });
-      }
-      if (path.startsWith('/api/notes/') && request.method === 'DELETE') {
-        const id = path.split('/')[3];
-        const r = await fetch(SUPABASE_URL + '/rest/v1/notes?id=eq.' + id, { method: 'DELETE', headers: h });
-        if (!r.ok) return json({ error: 'Delete failed' }, r.status);
-        return json({ ok: true });
+      // Generic table CRUD
+      const rt = route(path);
+      if (rt) {
+        if (rt.id) {
+          if (method === 'DELETE') return corsify(await proxyDelete(rt.table, SUPABASE_URL, h, rt.id));
+          if (method === 'PATCH') return corsify(await proxyUpdate(rt.table, SUPABASE_URL, h, rt.id, request));
+        } else {
+          if (method === 'GET') return corsify(await proxyList(rt.table, SUPABASE_URL, h));
+          if (method === 'POST') return corsify(await proxyCreate(rt.table, SUPABASE_URL, h, request));
+        }
       }
 
-      // Bookmarks
-      if (path === '/api/bookmarks' && request.method === 'GET') {
-        const r = await fetch(SUPABASE_URL + '/rest/v1/bookmarks?select=*&order=created_at.desc', { headers: h });
-        return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } });
-      }
-      if (path === '/api/bookmarks' && request.method === 'POST') {
-        const body = await request.json();
-        const r = await fetch(SUPABASE_URL + '/rest/v1/bookmarks', {
-          method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
-        });
-        return new Response(null, { status: r.status });
-      }
-      if (path.startsWith('/api/bookmarks/') && request.method === 'DELETE') {
-        const id = path.split('/')[3];
-        const r = await fetch(SUPABASE_URL + '/rest/v1/bookmarks?id=eq.' + id, { method: 'DELETE', headers: h });
-        if (!r.ok) return json({ error: 'Delete failed' }, r.status);
-        return json({ ok: true });
-      }
-
-      // Files
-      if (path === '/api/files' && request.method === 'GET') {
-        const r = await fetch(SUPABASE_URL + '/rest/v1/files?select=*&order=date.desc', { headers: h });
-        return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } });
-      }
-      if (path === '/api/files' && request.method === 'POST') {
-        const body = await request.json();
-        const r = await fetch(SUPABASE_URL + '/rest/v1/files', {
-          method: 'POST', headers: { ...h, 'Prefer': 'return=minimal' }, body: JSON.stringify(body)
-        });
-        return new Response(null, { status: r.status });
-      }
-      if (path.startsWith('/api/files/') && request.method === 'DELETE') {
-        const id = path.split('/')[3];
-        const r = await fetch(SUPABASE_URL + '/rest/v1/files?id=eq.' + id, { method: 'DELETE', headers: h });
-        if (!r.ok) return json({ error: 'Delete failed' }, r.status);
-        return json({ ok: true });
-      }
-
-      return json({ error: 'Not found' }, 404);
+      return corsify(json({ error: 'Not found' }, 404));
     } catch (e) {
-      return json({ error: e.message }, 500);
+      return corsify(json({ error: e.message }, 500));
     }
   }
 };
-
-function json(data, status) {
-  return new Response(JSON.stringify(data), {
-    status: status || 200,
-    headers: { 'Content-Type': 'application/json; charset=utf-8' }
-  });
-}
