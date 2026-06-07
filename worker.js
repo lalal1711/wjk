@@ -1,13 +1,10 @@
-const HTML = `<!DOCTYPE html>
+const HTML = `!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>个人站</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📦</text></svg>">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/marked@9/marked.min.js"><\/script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -18,7 +15,9 @@ const HTML = `<!DOCTYPE html>
   --tx:#e2e8f0;--ts:#8892a4;--tm:#475569;
   --re:#f43f5e;--gr:#10b981;--ye:#f59e0b;
   --r:14px;--rs:9px;
-  --font:'DM Sans',sans-serif;--display:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+  --font:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --display:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  --mono:'SF Mono',Monaco,Inconsolata,'Fira Code','Cascadia Code',monospace;
 }
 html{scroll-behavior:smooth}
 body{font-family:var(--font);background:var(--bg);color:var(--tx);min-height:100vh;font-size:15px;
@@ -391,7 +390,7 @@ input:focus,textarea:focus{border-color:rgba(99,102,241,.45);background:rgba(99,
 </div>
 
 <script>
-/* ═══ STATE ═══ */
+/* STATE */
 var ND=[], BD=[], FD=[];
 var atag={notes:null, bookmarks:null};
 var sortD={notes:true, bookmarks:true, backup:true};
@@ -402,7 +401,7 @@ var prevCounts={notes:-1, bookmarks:-1, backup:-1};
 var currentToken='';
 var authRequired=false;
 
-/* ═══ UTILS ═══ */
+/* UTILS */
 function esc(t){if(!t)return'';return(t+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function fmtDate(d){
   var dt=new Date(d);
@@ -423,12 +422,24 @@ function fileIco(n){
 }
 function mdRender(t){
   if(!t)return'';
-  try{if(typeof marked!=='undefined')return marked.parse(t,{breaks:true});}catch(e){}
-  return esc(t).replace(/\n/g,'<br>');
+  var h=esc(t);
+  h=h.replace(/&lt;pre&gt;&lt;code&gt;([\s\S]*?)&lt;\/code&gt;&lt;\/pre&gt;/g,'<pre><code>$1</code></pre>');
+  h=h.replace(/\`\`\`([\s\S]*?)\`\`\`/g,'<pre><code>$1</code></pre>');
+  h=h.replace(/\`([^\`]+)\`/g,'<code>$1</code>');
+  h=h.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+  h=h.replace(/\*([^*\s][^*]*)\*/g,'<em>$1</em>');
+  h=h.replace(/^### (.*$)/gim,'<h3>$1</h3>');
+  h=h.replace(/^## (.*$)/gim,'<h2>$1</h2>');
+  h=h.replace(/^# (.*$)/gim,'<h1>$1</h1>');
+  h=h.replace(/\[([^\]]+)\]\(([^)]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  h=h.replace(/^\- (.*$)/gim,'<li>$1</li>');
+  h=h.replace(/(<li>.*<\/li>\n?)+/g,'<ul>$&</ul>');
+  h=h.split('\n').join('<br>');
+  return h;
 }
 function updCount(el,id){document.getElementById(id).textContent=el.value.length;}
 
-/* ═══ DRAFT ═══ */
+/* DRAFT */
 function saveDraft(k,v){try{localStorage.setItem('wjk_d_'+k,v);}catch(e){}}
 function loadDraft(k){try{return localStorage.getItem('wjk_d_'+k)||'';}catch(e){return '';}}
 function clrDraft(keys){keys.forEach(function(k){try{localStorage.removeItem('wjk_d_'+k);}catch(e){}});}
@@ -443,7 +454,7 @@ function restoreDrafts(){
   }
 }
 
-/* ═══ API ═══ */
+/* API */
 async function api(path, method, body){
   var opts={method:method||'GET',headers:{}};
   if(currentToken)opts.headers['X-Token']=currentToken;
@@ -455,7 +466,7 @@ async function api(path, method, body){
   return res.json();
 }
 
-/* ═══ TOAST ═══ */
+/* TOAST */
 function toast(msg,type){
   var el=document.createElement('div');
   el.className='toast '+(type||'info');
@@ -465,7 +476,7 @@ function toast(msg,type){
   setTimeout(function(){el.classList.add('out');setTimeout(function(){el.remove();},220);},3200);
 }
 
-/* ═══ CONFIRM MODAL ═══ */
+/* CONFIRM MODAL */
 function confirmDlg(msg){
   return new Promise(function(res){
     var mo=document.getElementById('modal');
@@ -478,13 +489,13 @@ function confirmDlg(msg){
   });
 }
 
-/* ═══ STATUS ═══ */
+/* STATUS */
 function setStatus(type,txt){
   var el=document.getElementById('status-dot');el.className=type;
   document.getElementById('status-txt').textContent=txt;
 }
 
-/* ═══ AUTH ═══ */
+/* AUTH */
 function showLogin(msg){
   document.getElementById('login-screen').style.display='';
   document.getElementById('login-screen').classList.remove('out');
@@ -526,7 +537,7 @@ function doLogout(){
   showLogin();
 }
 
-/* ═══ TABS ═══ */
+/* TABS */
 function switchTab(tab){
   ['notes','bookmarks','backup'].forEach(function(t){
     document.getElementById('panel-'+t).classList.remove('active');
@@ -540,7 +551,7 @@ function switchTab(tab){
   if(tab==='backup')renderFiles();
 }
 
-/* ═══ BADGES ═══ */
+/* BADGES */
 function updBadges(){
   var map={notes:ND.length, bookmarks:BD.length, backup:FD.length};
   Object.keys(map).forEach(function(k){
@@ -553,7 +564,7 @@ function updBadges(){
   });
 }
 
-/* ═══ TAG FILTERS ═══ */
+/* TAG FILTERS */
 function getTags(data,key){var m={};data.forEach(function(d){(d[key]||'').split(' ').forEach(function(t){if(t)m[t]=(m[t]||0)+1;});});return Object.keys(m).sort();}
 function renderTags(cid,tags,panel){
   var el=document.getElementById(cid);if(!tags.length){el.innerHTML='';return;}
@@ -567,14 +578,14 @@ function renderTags(cid,tags,panel){
 }
 function setTag(p,tag){atag[p]=tag;if(p==='notes')renderNotes();if(p==='bookmarks')renderBookmarks();}
 
-/* ═══ SORT ═══ */
+/* SORT */
 function toggleSort(p){
   sortD[p]=!sortD[p];
   document.getElementById('sort-'+p).textContent=(sortD[p]?'↓':'↑')+' '+(sortD[p]?'最新':'最旧');
   if(p==='notes')renderNotes();if(p==='bookmarks')renderBookmarks();if(p==='backup')renderFiles();
 }
 
-/* ═══ SEARCH ═══ */
+/* SEARCH */
 function onSearch(el,panel,clrId){
   document.getElementById(clrId).classList.toggle('show',!!el.value);
   if(panel==='notes')renderNotes();if(panel==='bookmarks')renderBookmarks();if(panel==='backup')renderFiles();
@@ -585,19 +596,19 @@ function clrSearch(panel){
   if(panel==='notes')renderNotes();if(panel==='bookmarks')renderBookmarks();if(panel==='backup')renderFiles();
 }
 
-/* ═══ EXPORT ═══ */
+/* EXPORT */
 function dlFile(name,content,type){
   var b=new Blob([content],{type:type});var u=URL.createObjectURL(b);
   var a=document.createElement('a');a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);
 }
 function exportNotes(){
   if(!ND.length)return toast('暂无数据可导出','err');
-  var md='# 备忘导出\n\n';
+  var md='# 备忘导出\\n\\n';
   ND.forEach(function(n){
-    md+='## '+(n.title||'无标题')+'\n\n';
-    if(n.content)md+=n.content+'\n\n';
-    if(n.tags)md+='**标签：** '+n.tags+'\n\n';
-    md+='> '+fmtDate(n.created_at)+'\n\n---\n\n';
+    md+='## '+(n.title||'无标题')+'\\n\\n';
+    if(n.content)md+=n.content+'\\n\\n';
+    if(n.tags)md+='**标签：** '+n.tags+'\\n\\n';
+    md+='> '+fmtDate(n.created_at)+'\\n\\n---\\n\\n';
   });
   dlFile('notes_'+new Date().toISOString().slice(0,10)+'.md',md,'text/markdown');
   toast('已导出 '+ND.length+' 条备忘','ok');
@@ -608,7 +619,7 @@ function exportBookmarks(){
   toast('已导出 '+BD.length+' 个书签','ok');
 }
 
-/* ═══ SKELETON ═══ */
+/* SKELETON */
 function skelCards(){
   var h='';
   for(var i=0;i<3;i++){
@@ -624,7 +635,7 @@ function skelCards(){
   return h;
 }
 
-/* ═══ NOTES ═══ */
+/* NOTES */
 function filtNotes(){
   var q=(document.getElementById('sq-notes').value||'').toLowerCase();
   var tag=atag.notes;
@@ -649,7 +660,7 @@ function renderNotes(){
         '<button class="btn btn-g btn-sm" onclick="cancelEdit()">取消<\/button><\/div><\/div><\/div>';
     }
     var raw=n.content||'';
-    var isLong=raw.length>160||raw.split('\n').length>3;
+    var isLong=raw.length>160||raw.split('\\n').length>3;
     var isExp=expandedNotes.indexOf(n.id)>-1;
     var tags=n.tags?(n.tags.split(' ').filter(Boolean).map(function(t){return '<span class="pill">'+esc(t)+'<\/span>';}).join('')):'';
     return '<div class="card" data-id="'+n.id+'" style="animation-delay:'+delay+'">'+
@@ -661,7 +672,6 @@ function renderNotes(){
       '<button class="ibtn del" data-id="'+n.id+'" title="删除">🗑<\/button>'+
       '<\/div><\/div><div class="cfoot">'+tags+'<span class="ts">'+fmtDate(n.created_at)+'<\/span><\/div><\/div>';
   }).join('');
-  // 绑定事件（避免在 HTML 字符串中嵌入引号）
   el.querySelectorAll('.card[data-id]').forEach(function(card){
     var id=parseInt(card.dataset.id);
     var edt=card.querySelector('.ibtn.edt');
@@ -715,7 +725,7 @@ async function loadNotes(){
   catch(e){document.getElementById('notes-list').innerHTML='<div class="empty"><div class="empty-ico">⚠️<\/div><p>加载失败：'+e.message+'<\/p><\/div>';}
 }
 
-/* ═══ BOOKMARKS ═══ */
+/* BOOKMARKS */
 function filtBMs(){
   var q=(document.getElementById('sq-bookmarks').value||'').toLowerCase();
   var tag=atag.bookmarks;
@@ -754,8 +764,8 @@ function onUrlInput(){
   var url=document.getElementById('b-url').value.trim();
   var warn=document.getElementById('dedup-warn');
   if(!url){warn.style.display='none';return;}
-  var norm=url.toLowerCase().replace(/\/$/,'');
-  var dup=BD.some(function(b){return(b.url||'').toLowerCase().replace(/\/$/,'')===norm;});
+  var norm=url.toLowerCase().replace(/\\/$/,'');
+  var dup=BD.some(function(b){return(b.url||'').toLowerCase().replace(/\\/$/,'')===norm;});
   warn.style.display=dup?'block':'none';
 }
 var titleFetchTimer=null;
@@ -765,7 +775,7 @@ function onUrlPaste(){
     var url=document.getElementById('b-url').value.trim();
     var tEl=document.getElementById('b-title');
     if(!url||tEl.value)return;
-    if(!/^https?:\/\//i.test(url))url='https://'+url;
+    if(!/^https?:\\/\\//i.test(url))url='https://'+url;
     tEl.classList.add('title-loading');tEl.placeholder='获取标题中…';
     api('/fetch-title?url='+encodeURIComponent(url)).then(function(d){
       if(d&&d.title&&!tEl.value)tEl.value=d.title;
@@ -779,7 +789,7 @@ async function addBookmark(){
   var url=document.getElementById('b-url').value.trim();
   var tags=document.getElementById('b-tags').value.trim();
   if(!title||!url)return toast('请填写名称和链接','err');
-  if(!/^https?:\/\//i.test(url))url='https://'+url;
+  if(!/^https?:\\/\\//i.test(url))url='https://'+url;
   var tmp={id:Date.now(),title:title,url:url,tags:tags,created_at:new Date().toISOString()};
   BD.unshift(tmp);updBadges();renderBookmarks();
   ['b-title','b-url','b-tags'].forEach(function(id){document.getElementById(id).value='';});
@@ -799,7 +809,7 @@ async function loadBookmarks(){
   catch(e){document.getElementById('bookmarks-list').innerHTML='<div class="empty"><div class="empty-ico">⚠️<\/div><p>加载失败：'+e.message+'<\/p><\/div>';}
 }
 
-/* ═══ FILES ═══ */
+/* FILES */
 function filtFiles(){
   var q=(document.getElementById('sq-backup').value||'').toLowerCase();
   var d=FD.filter(function(f){return !q||(f.name||'').toLowerCase().includes(q);});
@@ -853,7 +863,7 @@ async function loadFiles(){
   catch(e){document.getElementById('files-list').innerHTML='<div class="empty"><div class="empty-ico">⚠️<\/div><p>加载失败：'+e.message+'<\/p><\/div>';}
 }
 
-/* ═══ DRAG & DROP ═══ */
+/* DRAG & DROP */
 var dz=document.getElementById('dropzone');
 dz.addEventListener('dragover',function(e){e.preventDefault();dz.classList.add('drag');});
 dz.addEventListener('dragleave',function(){dz.classList.remove('drag');});
@@ -863,7 +873,7 @@ dz.addEventListener('drop',function(e){
   if(f){var dt=new DataTransfer();dt.items.add(f);document.getElementById('f-input').files=dt.files;onFileSel(document.getElementById('f-input'));}
 });
 
-/* ═══ KEYBOARD ═══ */
+/* KEYBOARD */
 document.addEventListener('keydown',function(e){
   if((e.ctrlKey||e.metaKey)&&e.key==='Enter'){
     var p=document.querySelector('.panel.active');if(!p)return;
@@ -874,7 +884,7 @@ document.addEventListener('keydown',function(e){
   if(e.key==='Escape')document.getElementById('modal').classList.remove('show');
 });
 
-/* ═══ INIT ═══ */
+/* INIT */
 async function loadAll(){
   setStatus('blink','连接中…');
   restoreDrafts();
@@ -919,9 +929,7 @@ async function init(){
 init();
 <\/script>
 </body>
-</html>`;
-
-export default {
+</html>\`;`;export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const path = url.pathname;
@@ -936,7 +944,7 @@ export default {
       return json({ error: '请配置 SUPABASE_URL 和 SUPABASE_KEY' }, 500);
     }
 
-    // ── Auth middleware ──
+    // Auth middleware
     if (env.AUTH_PASSWORD) {
       const token = request.headers.get('X-Token');
       if (token !== env.AUTH_PASSWORD) {
@@ -951,7 +959,7 @@ export default {
     };
 
     try {
-      // ── fetch-title ──
+      // fetch-title
       if (path === '/api/fetch-title' && request.method === 'GET') {
         const targetUrl = url.searchParams.get('url');
         if (!targetUrl) return json({ title: '' });
@@ -972,7 +980,7 @@ export default {
         }
       }
 
-      // ── Notes ──
+      // Notes
       if (path === '/api/notes' && request.method === 'GET') {
         const r = await fetch(SUPABASE_URL + '/rest/v1/notes?select=*&order=created_at.desc', { headers: h });
         return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } });
@@ -999,7 +1007,7 @@ export default {
         return json({ ok: true });
       }
 
-      // ── Bookmarks ──
+      // Bookmarks
       if (path === '/api/bookmarks' && request.method === 'GET') {
         const r = await fetch(SUPABASE_URL + '/rest/v1/bookmarks?select=*&order=created_at.desc', { headers: h });
         return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } });
@@ -1018,7 +1026,7 @@ export default {
         return json({ ok: true });
       }
 
-      // ── Files ──
+      // Files
       if (path === '/api/files' && request.method === 'GET') {
         const r = await fetch(SUPABASE_URL + '/rest/v1/files?select=*&order=date.desc', { headers: h });
         return new Response(r.body, { status: r.status, headers: { 'Content-Type': 'application/json' } });
