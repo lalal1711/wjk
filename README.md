@@ -131,8 +131,8 @@ create table if not exists files (
 
 #### 方式一：Cloudflare 控制台（推荐新手）
 
-1. 打开 dash.cloudflare.com → **Workers & Pages** → **Create** → **Create Worker**
-2. 将 `worker.js` 的内容全部粘贴进编辑器
+1. 打开 [dash.cloudflare.com](https://dash.cloudflare.com) → **Workers & Pages** → **Create** → **Create Worker**
+2. 将 [`worker.js`](worker.js) 的内容全部粘贴进编辑器
 3. 点击 **Deploy**
 
 #### 方式二：Wrangler CLI（推荐开发者）
@@ -149,7 +149,7 @@ git clone https://github.com/lalal1711/wjk.git
 cd wjk
 
 # 部署
-wrangler deploy worker.js
+wrangler deploy [worker.js](worker.js)
 ```
 
 #### 方式三：通过 GitHub 自动部署到 Cloudflare（推荐）
