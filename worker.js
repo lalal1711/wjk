@@ -216,7 +216,7 @@ input:focus,textarea:focus{border-color:rgba(99,102,241,.45);background:rgba(99,
 @keyframes tOut{to{opacity:0;transform:translateX(16px)}}
 
 /* ── Dialog / Confirm ── */
-#modal{border:none;border-radius:var(--r);padding:0;background:transparent;max-width:370px;width:90%}
+#modal{border:none;border-radius:var(--r);padding:0;background:transparent;max-width:370px;width:90%;margin:auto}
 #modal::backdrop{background:rgba(0,0,0,.72);backdrop-filter:blur(5px)}
 .mbox{background:#0c1018;border:1px solid var(--b1);border-radius:var(--r);padding:30px;
   text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.6)}
@@ -461,7 +461,7 @@ async function api(path, method, body){
   const res=await fetch('/api'+path,opts);
   if(res.status===401){if(authRequired){sessionStorage.removeItem('wjk_t');localStorage.removeItem('wjk_t');showLogin('密码已失效，请重新登录');}throw new Error('Unauthorized');}
   if(!res.ok)throw new Error(res.status+' '+res.statusText);
-  if(res.status===204)return null;
+  if(res.status===204||res.status===201)return null;
   return res.json();
 }
 
